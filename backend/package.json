@@ -1,0 +1,10 @@
+{
+  "name": "backend",
+  "private": true,
+  "scripts": {
+    "setup": "uv sync",
+    "dev": "uv run uvicorn --port 7935 --reload api:api",
+    "start": "uv run uvicorn --port 7936 main:app"
+  },
+  "type": "module"
+}

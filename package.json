@@ -1,0 +1,19 @@
+{
+  "name": "tinypalette",
+  "private": true,
+  "scripts": {
+    "setup": "pnpm install && pnpm --filter \"*\" run setup",
+    "dev": "pnpm --parallel --filter \"*\" run dev",
+    "build": "pnpm --parallel --filter \"*\" run build",
+    "start": "pnpm --parallel --filter \"*\" run start"
+  },
+  "license": "AGPL-3.0-or-later",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.3.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module"
+}
