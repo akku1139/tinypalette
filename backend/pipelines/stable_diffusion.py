@@ -7,7 +7,6 @@ from collections import namedtuple
 from typing import Dict, Any
 
 import numpy as np
-from tinygrad.device import Device
 from tinygrad.helpers import GlobalCounters
 from tinygrad.dtype import dtypes
 from tinygrad.tensor import Tensor
@@ -18,7 +17,7 @@ from tinygrad.nn.state import torch_load, safe_load, load_state_dict, get_state_
 from extra.models.clip import Closed, Tokenizer, FrozenOpenClipEmbedder
 from extra.models import unet, clip
 from extra.models.unet import UNetModel
-from pipelines.base import Pipeline
+from pipelines.base import Model, Pipeline
 from pipelines.mlperf.initializers import AutocastLinear, AutocastConv2d, AutocastGroupNorm, AutocastLayerNorm, zero_module, attn_f32_softmax, gelu_erf
 from extra.bench_log import BenchEvent, WallTimeEvent
 
@@ -169,8 +168,9 @@ mlperf_params: Dict[str,Any] = {'adm_in_ch': None, 'in_ch': 4, 'out_ch': 4, 'mod
                                 'channel_mult': [1, 2, 4, 4], 'd_head': 64, 'transformer_depth': [1, 1, 1, 1], 'ctx_dim': 1024, 'use_linear': True,
                                 'num_groups':16, 'st_norm_eps':1e-6}
 
-class StableDiffusion:
-  def __init__(self, version:str|None=None, pretrained:str|None=None):
+class StableDiffusion(Model):
+  def __init__(self, path:str, version:str|None=None, pretrained:str|None=None): # loads only safetensors
+    super().__init__(path)
     self.alphas_cumprod = get_alphas_cumprod()
     if version != 'v2-mlperf-train':
       self.first_stage_model = AutoencoderKL() # only needed for decoding generated latents to images; not needed in mlperf training from preprocessed moments
@@ -207,6 +207,19 @@ class StableDiffusion:
         elif isinstance(bb, unet.SpatialTransformer):
           zero_module(bb.proj_out)
       zero_module(self.model.diffusion_model.out[2])
+
+    profile_marker('load in weights')
+    with WallTimeEvent(BenchEvent.LOAD_WEIGHTS):
+      state_dict = safe_load(path)
+      profile_marker('state dict loaded')
+      load_state_dict(self, state_dict, verbose=False, strict=False, realize=False)
+
+      # TODO: cast on CPU
+      for _k,v in get_state_dict(self).items():
+        if v.dtype == dtypes.float64 or v.dtype == dtypes.double: # Some models have fp64 params
+          v.replace(v.cast(dtypes.float32))
+
+      Tensor.realize(*get_state_dict(self).values())
 
   def get_x_prev_and_pred_x0(self, x, e_t, a_t, a_prev):
     # temperature = 1
@@ -263,32 +276,9 @@ class StableDiffusion:
 # ** ldm.modules.encoders.modules.FrozenCLIPEmbedder
 # cond_stage_model.transformer.text_model
 
-class StableDiffusionPipeline(Pipeline):
-  def __init__(self) -> None:
-    super().__init__()
-    profile_marker('create model')
-    self.model = StableDiffusion()
-
-  def load(self, path: str): # loads only safetensors
-    profile_marker('load in weights')
-    with WallTimeEvent(BenchEvent.LOAD_WEIGHTS):
-      disk_state_dict = safe_load(path)
-
-      state_dict = {}
-      for k, v in disk_state_dict.items():
-        v_cpu = v.to('CPU')
-
-        if v_cpu.dtype == dtypes.float64: # Some models have fp64 params
-          v_cpu = v_cpu.cast(dtypes.float32)
-
-        state_dict[k] = v_cpu.to(Device.DEFAULT)
-
-      profile_marker('state dict loaded')
-      load_state_dict(self.model, state_dict, verbose=False, strict=False, realize=False)
-      Tensor.realize(*get_state_dict(self.model).values())
-
-  def unload(self):
-    pass
+class StableDiffusionText2ImagePipeline(Pipeline[StableDiffusion]):
+  def __init__(self, model: StableDiffusion) -> None:
+    super().__init__(model)
 
   def generate(self, prompt: str, *, steps: int=20, seed: int|None = None, guidance: float=7.5) -> Tensor:
     profile_marker('run clip (conditional)')
@@ -329,7 +319,7 @@ class StableDiffusionPipeline(Pipeline):
             tid = Tensor([index])
             latent = run(self.model, unconditional_context, context, latent, Tensor([timestep]), alphas[tid], alphas_prev[tid], Tensor([guidance]))
             # if args.timing:
-            Device[Device.DEFAULT].synchronize()
+            self.device.synchronize()
         step_times.append((time.perf_counter_ns() - st)*1e-6)
       # done with diffusion model
       del run

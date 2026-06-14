@@ -7,5 +7,5 @@ tinygrad WebUI
 ```sh
 pnpm setup
 pnpm build
-DEV=CL pnpm start
+DEV=CL RUSTICL_FEATURES=fp64 pnpm start
 ```

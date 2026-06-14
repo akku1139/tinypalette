@@ -2,19 +2,24 @@ from fastapi import FastAPI, Response
 from PIL import Image
 import io
 
-from pool import get_model, load_model
+from pool import create_pipeline, get_pipeline, load_model
 
 api = FastAPI(root_path='/api')
 
 @api.get('/load')
 # @api.post('/load')
 def load(type: str, path: str):
-  return { "id": load_model(type, path) }
+  return { "model_id": load_model(type, path) }
+
+@api.get('/create_pipeline')
+# @api.post('/create_pipeline')
+def cp(model_id: str):
+  return { "pipeline_id": create_pipeline(model_id) }
 
 @api.get('/generate', response_class=Response)
 # @api.post('/generate', response_class=Response)
 def generate(id: str, prompt: str):
-  pipe = get_model(id)
+  pipe = get_pipeline(id)
   res = pipe.generate(prompt)
   im = Image.fromarray(res.numpy())
   img_io = io.BytesIO()

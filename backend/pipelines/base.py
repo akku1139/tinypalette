@@ -1,18 +1,15 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from tinygrad.device import Device
 from tinygrad.tensor import Tensor
 
-class Pipeline:
-  def __init__(self) -> None:
-    self.device = Device.DEFAULT
-
-  @abstractmethod
-  def load(self, path: str):
+class Model(ABC):
+  def __init__(self, path: str) -> None:
     pass
 
-  @abstractmethod
-  def unload(self):
-    pass
+class Pipeline[T: Model](ABC):
+  def __init__(self, model: T) -> None:
+    self.device = Device[Device.DEFAULT]
+    self.model = model
 
   @abstractmethod
   def generate(self, prompt: str) -> Tensor:
