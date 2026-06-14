@@ -25,4 +25,10 @@ def create_pipeline(model_id: str) -> str:
   return pipeline_id
 
 def get_pipeline(pipeline_id: str) -> Pipeline:
-  return _models[pipeline_id].pipelines[pipeline_id]
+  pipe = next(
+    (container.pipelines[pipeline_id] for container in _models.values() if pipeline_id in container.pipelines),
+    None
+  )
+  if pipe is None:
+    raise KeyError(f'non-existent pipeline: {pipeline_id}')
+  return pipe

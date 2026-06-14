@@ -94,7 +94,7 @@ class Decoder:
         bs,c,py,px = x.shape
         x = x.reshape(bs, c, py, 1, px, 1).expand(bs, c, py, 2, px, 2).reshape(bs, c, py*2, px*2)
         x = l['upsample']['conv'](x)
-      x.realize()
+      # x.realize()
 
     return self.conv_out(self.norm_out(x).swish())
 

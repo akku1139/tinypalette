@@ -1,26 +1,41 @@
 from fastapi import FastAPI, Response
 from PIL import Image
 import io
+from pydantic import BaseModel
 
+from config import config
 from pool import create_pipeline, get_pipeline, load_model
 
 api = FastAPI(root_path='/api')
 
-@api.get('/load')
-# @api.post('/load')
-def load(type: str, path: str):
-  return { "model_id": load_model(type, path) }
+@api.get('/list_models/stablediffusion')
+def list_models_stablediffusion():
+  return list(config.path.models.stablediffusion.rglob("*.safetensors"))
 
-@api.get('/create_pipeline')
-# @api.post('/create_pipeline')
-def cp(model_id: str):
-  return { "pipeline_id": create_pipeline(model_id) }
+class LoadData(BaseModel):
+  type: str
+  path: str
 
-@api.get('/generate', response_class=Response)
-# @api.post('/generate', response_class=Response)
-def generate(id: str, prompt: str):
-  pipe = get_pipeline(id)
-  res = pipe.generate(prompt)
+@api.post('/load')
+def load(data: LoadData):
+  return { "model_id": load_model(data.type, data.path) }
+
+class CreatePipelineData(BaseModel):
+  model_id: str
+  type: str
+
+@api.post('/create_pipeline')
+def cp(data: CreatePipelineData):
+  return { "pipeline_id": create_pipeline(data.model_id) }
+
+class GenerateData(BaseModel):
+  pipeline_id: str
+  prompt: str
+
+@api.post('/generate', response_class=Response)
+def generate(data: GenerateData):
+  pipe = get_pipeline(data.pipeline_id)
+  res = pipe.generate(data.prompt)
   im = Image.fromarray(res.numpy())
   img_io = io.BytesIO()
   im.save(img_io, format="PNG")
