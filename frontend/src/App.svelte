@@ -1,5 +1,7 @@
 <script lang='ts'>
 import { onMount } from 'svelte';
+import ToastContainer from './lib/ToastContainer.svelte';
+import { addToast } from './lib/toastStore';
 
 const BASE_URL = '/api';
 
@@ -13,26 +15,24 @@ let prompt = '';
 let negative_prompt = '';
 let generatedImageUrl = '';
 
-let statusMessage = '';
 let isLoading = false;
 
 onMount(async () => {
   try {
-    statusMessage = 'Fetching model list...';
+    addToast({ type: 'info', message: 'Fetching model list...' });
     const res = await fetch(`${BASE_URL}/list_models/stablediffusion`);
     if (!res.ok) throw new Error('Failed to get model list');
     models = await res.json();
     if (models.length > 0) selectedModelPath = models[0];
-    statusMessage = '';
   } catch (err: any) {
-    statusMessage = `Error: ${err.message}`;
+    addToast({ type: 'error', message: `Error: ${err.message}` });
   }
 });
 
 async function setupPipeline() {
   if (!selectedModelPath) return;
   isLoading = true;
-  statusMessage = 'Loading model...';
+  addToast({ type: 'info', message: 'Loading model...' });
 
   try {
     const loadRes = await fetch(`${BASE_URL}/load`, {
@@ -44,7 +44,7 @@ async function setupPipeline() {
     const loadData = await loadRes.json();
     modelId = loadData.model_id;
 
-    statusMessage = 'Creating pipeline...';
+    addToast({ type: 'info', message: 'Creating pipeline...' });
     const pipeRes = await fetch(`${BASE_URL}/create_pipeline`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -54,9 +54,9 @@ async function setupPipeline() {
     const pipeData = await pipeRes.json();
     pipelineId = pipeData.pipeline_id;
 
-    statusMessage = 'Ready.';
+    addToast({ type: 'info', message: 'Ready.' });
   } catch (err: any) {
-    statusMessage = `Error: ${err.message}`;
+    addToast({ type: 'error', message: `Error: ${err.message}` });
   } finally {
     isLoading = false;
   }
@@ -65,7 +65,7 @@ async function setupPipeline() {
 async function generateImage() {
   if (!pipelineId || !prompt) return;
   isLoading = true;
-  statusMessage = 'Generating...';
+  addToast({ type: 'info', message: 'Generating...' });
   if (generatedImageUrl) {
     URL.revokeObjectURL(generatedImageUrl);
     generatedImageUrl = '';
@@ -82,9 +82,9 @@ async function generateImage() {
 
     const blob = await res.blob();
     generatedImageUrl = URL.createObjectURL(blob);
-    statusMessage = 'Generation done.';
+    addToast({ type: 'info', message: 'Generation done.' });
   } catch (err: any) {
-    statusMessage = `Error: ${err.message}`;
+    addToast({ type: 'error', message: `Error: ${err.message}` });
   } finally {
     isLoading = false;
   }
@@ -92,85 +92,90 @@ async function generateImage() {
 </script>
 
 <main class="container">
-  <h1>tinypalette</h1>
-
-  {#if statusMessage}
-    <div class="status-box">{statusMessage}</div>
-  {/if}
-
-  <section class="card">
-    <h2>1. Model setup</h2>
-    <div class="form-group">
-      <label for="model-select">Select model:</label>
-      <select id="model-select" bind:value={selectedModelPath} disabled={isLoading || !!pipelineId}>
-        {#each models as model}
-          <option value={model}>{model.split('/').pop() || model}</option>
-        {/each}
-      </select>
-    </div>
-
-    <button on:click={setupPipeline} disabled={isLoading || !selectedModelPath || !!pipelineId}>
-      {pipelineId ? 'setup done' : 'load a model'}
-    </button>
-
-    {#if pipelineId}
-      <p class="success-text">Pipeline ID: <code>{pipelineId}</code></p>
-    {/if}
-  </section>
-
-  <section class="card" class:disabled={!pipelineId}>
-    <h2>2. Generation</h2>
-    <div class="form-group">
-      <label for="prompt-input">Prompt:</label>
-      <textarea
-        id="prompt-input"
-        bind:value={prompt}
-        placeholder="a fantasy landscape, highly detailed..."
-        disabled={!pipelineId || isLoading}
-      ></textarea>
-      <label for="negativeprompt-input">Prompt:</label>
-      <textarea
-        id="negativeprompt-input"
-        bind:value={negative_prompt}
-        placeholder="bad fingers..."
-        disabled={!pipelineId || isLoading}
-      ></textarea>
-    </div>
-
-    <button on:click={generateImage} disabled={!pipelineId || !prompt || isLoading}>
-      {isLoading ? 'Generating...' : 'Generate'}
-    </button>
-  </section>
-
-  <section class="result-container">
-    {#if generatedImageUrl}
-      <div class="image-wrapper">
-        <img src={generatedImageUrl} alt="Generated" />
+  <div class='left'>
+    <section class="card">
+      <div class="form-group">
+        <label for="model-select">Select model:</label>
+        <select id="model-select" bind:value={selectedModelPath} disabled={isLoading || !!pipelineId}>
+          {#each models as model}
+            <option value={model}>{model.split('/').pop() || model}</option>
+          {/each}
+        </select>
       </div>
-    {:else if isLoading && pipelineId}
-      <div class="spinner-placeholder">Generating an image...</div>
-    {/if}
-  </section>
+
+      <button on:click={setupPipeline} disabled={isLoading || !selectedModelPath || !!pipelineId}>
+        {pipelineId ? 'setup done' : 'load a model'}
+      </button>
+    </section>
+
+    <section class="card" class:disabled={!pipelineId}>
+      <div class="form-group">
+        <label for="prompt-input">Prompt:</label>
+        <textarea
+          id="prompt-input"
+          bind:value={prompt}
+          placeholder="a fantasy landscape, highly detailed..."
+          disabled={!pipelineId || isLoading}
+        ></textarea>
+        <label for="negativeprompt-input">Negative Prompt:</label>
+        <textarea
+          id="negativeprompt-input"
+          bind:value={negative_prompt}
+          placeholder="bad fingers..."
+          disabled={!pipelineId || isLoading}
+        ></textarea>
+      </div>
+
+      <button on:click={generateImage} disabled={!pipelineId || !prompt || isLoading}>
+        {isLoading ? 'Generating...' : 'Generate'}
+      </button>
+    </section>
+  </div>
+  <div class='center'>
+    <section class="result-container">
+      {#if generatedImageUrl}
+        <div class="image-wrapper">
+          <img src={generatedImageUrl} alt="Generated" />
+        </div>
+      {:else if isLoading && pipelineId}
+        <div class="spinner-placeholder">Generating an image...</div>
+      {/if}
+    </section>
+  </div>
 </main>
+
+<ToastContainer />
 
 <style>
 :global(body) {
   font-family: sans-serif;
-  background-color: #f5f7fa;
-  color: #333;
+  background-color: #1e1e1e;
+  color: #ccc;
   margin: 0;
-  padding: 20px;
 }
+
 .container {
-  max-width: 800px;
+  display: grid;
+  grid-template-areas: "left center";
+  min-width: 100%;
   margin: 0 auto;
 }
+
+.left {
+  grid-area: left;
+  /*padding: 20px;*/
+  max-width: 500px;
+}
+
+.center {
+  grid-area: center;
+  width: 100%;
+}
+
 .card {
-  background: white;
+  background: 252526;
   padding: 20px;
   margin-bottom: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .card.disabled {
   opacity: 0.5;
@@ -187,7 +192,7 @@ label {
 select, textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid #333;
   border-radius: 4px;
   box-sizing: border-box;
 }
@@ -196,8 +201,8 @@ textarea {
   resize: vertical;
 }
 button {
-  background-color: #0070f3;
-  color: white;
+  background-color: #007acc;
+  color: #333;
   border: none;
   padding: 10px 20px;
   border-radius: 4px;
@@ -208,27 +213,14 @@ button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }
-.status-box {
-  background-color: #e1f5fe;
-  border-left: 4px solid #0288d1;
-  padding: 12px;
-  margin-bottom: 20px;
-  border-radius: 4px;
-}
-.success-text {
-  color: #2e7d32;
-  font-size: 14px;
-}
 .result-container {
-  margin-top: 20px;
+  margin: auto;
   display: flex;
   justify-content: center;
 }
 .image-wrapper img {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 .spinner-placeholder {
   padding: 40px;
