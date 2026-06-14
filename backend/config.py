@@ -12,7 +12,7 @@ class Config(BaseModel):
     models: ModelsConfig
 
     class OutputsConfig(BaseModel):
-      image: Path
+      images: Path
     outputs: OutputsConfig
 
   path: PathConfig
@@ -20,4 +20,4 @@ class Config(BaseModel):
 config = Config.model_validate_json(CONFIG_FILE_PATH.read_text(encoding="utf-8"))
 
 os.makedirs(config.path.models.stablediffusion, exist_ok=True)
-os.makedirs(config.path.outputs.image, exist_ok=True)
+os.makedirs(config.path.outputs.images, exist_ok=True)

@@ -46,9 +46,13 @@ def generate(data: GenerateData):
   im = Image.fromarray(res.numpy())
   img_io = io.BytesIO()
   im.save(img_io, format="PNG")
-  im.save(config.path.outputs.image/f'{uuid.uuid7()}.png')
+  im.save(config.path.outputs.images/f'{uuid.uuid7()}.png')
   img_io.seek(0)
   return Response(content=img_io.getvalue(), media_type="image/png")
+
+@api.get('/list_outputs/stablediffusion')
+def list_outputs_stablediffusion():
+  return list(config.path.outputs.images.rglob("*.png"))
 
 @api.get('/')
 async def root():

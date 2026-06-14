@@ -147,11 +147,24 @@ async function generateImage() {
 <ToastContainer />
 
 <style>
+:root {
+  --color-main: #1e1e1e;
+  --color-sub: #333;
+  --color-extra: #181818;
+  --color-text: #ccc;
+  --color-accent: #007acc;
+  --color-white: #eaeaea;
+}
+
 :global(body) {
   font-family: sans-serif;
-  background-color: #1e1e1e;
-  color: #ccc;
+  background-color: var(--color-main);
+  color: var(--color-text);
   margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  box-sizing: border-box;
 }
 
 .container {
@@ -165,6 +178,8 @@ async function generateImage() {
   grid-area: left;
   /*padding: 20px;*/
   max-width: 500px;
+  background-color: var(--color-extra);
+  height: 100vh;
 }
 
 .center {
@@ -192,31 +207,34 @@ label {
 select, textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid #333;
+  border: 1px solid var(--color-sub);
   border-radius: 4px;
   box-sizing: border-box;
+  color: inherit;
+  background-color: var(--color-main);
 }
 textarea {
   height: 100px;
   resize: vertical;
 }
 button {
-  background-color: #007acc;
-  color: #333;
+  background-color: var(--color-accent);
+  color: var(--color-sub);
   border: none;
-  padding: 10px 20px;
+  padding: 8px 17px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
 }
 button:disabled {
-  background-color: #ccc;
+  background-color: var(--color-text);
   cursor: not-allowed;
 }
 .result-container {
   margin: auto;
   display: flex;
   justify-content: center;
+  height: 100%;
 }
 .image-wrapper img {
   max-width: 100%;
@@ -224,7 +242,7 @@ button:disabled {
 }
 .spinner-placeholder {
   padding: 40px;
-  background: #eaeaea;
+  background: var(--color-white);
   border-radius: 8px;
   width: 100%;
   text-align: center;

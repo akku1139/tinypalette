@@ -21,7 +21,7 @@ DEV=CL RUSTICL_FEATURES=fp64 pnpm start
       "sd": "/path/to/StableDiffusion/models"
     },
     "outputs": {
-      "image": "/path/to/image/dir"
+      "images": "/path/to/images/dir"
     }
   }
 }
