@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import FastAPI, Response
 from PIL import Image
 import io
@@ -26,16 +28,20 @@ class CreatePipelineData(BaseModel):
 
 @api.post('/create_pipeline')
 def cp(data: CreatePipelineData):
-  return { "pipeline_id": create_pipeline(data.model_id) }
+  return { "pipeline_id": create_pipeline(data.model_id, 'text2image') }
 
 class GenerateData(BaseModel):
   pipeline_id: str
   prompt: str
+  negative_prompt: Optional[str] = None
+  steps: Optional[int] = None
+  seed: Optional[int] = None
+  guidance: Optional[float] = None
 
-@api.post('/generate', response_class=Response)
+@api.post('/generate/text2image', response_class=Response)
 def generate(data: GenerateData):
-  pipe = get_pipeline(data.pipeline_id)
-  res = pipe.generate(data.prompt)
+  pipe = get_pipeline(data.pipeline_id, 'text2image')
+  res = pipe.generate(data.prompt, data.negative_prompt or '', data.steps or 20, data.seed, data.guidance or 7.5)
   im = Image.fromarray(res.numpy())
   img_io = io.BytesIO()
   im.save(img_io, format="PNG")

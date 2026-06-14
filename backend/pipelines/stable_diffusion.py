@@ -17,7 +17,7 @@ from tinygrad.nn.state import torch_load, safe_load, load_state_dict, get_state_
 from extra.models.clip import Closed, Tokenizer, FrozenOpenClipEmbedder
 from extra.models import unet, clip
 from extra.models.unet import UNetModel
-from pipelines.base import Model, Pipeline
+from pipelines.base import Model, Text2ImagePipeline
 from pipelines.mlperf.initializers import AutocastLinear, AutocastConv2d, AutocastGroupNorm, AutocastLayerNorm, zero_module, attn_f32_softmax, gelu_erf
 from extra.bench_log import BenchEvent, WallTimeEvent
 
@@ -276,11 +276,11 @@ class StableDiffusion(Model):
 # ** ldm.modules.encoders.modules.FrozenCLIPEmbedder
 # cond_stage_model.transformer.text_model
 
-class StableDiffusionText2ImagePipeline(Pipeline[StableDiffusion]):
+class StableDiffusionText2ImagePipeline(Text2ImagePipeline[StableDiffusion]):
   def __init__(self, model: StableDiffusion) -> None:
     super().__init__(model)
 
-  def generate(self, prompt: str, *, steps: int=20, seed: int|None = None, guidance: float=7.5) -> Tensor:
+  def generate(self, prompt, nevative_prompt, steps, seed, guidance) -> Tensor:
     profile_marker('run clip (conditional)')
     tokenizer = Tokenizer.ClipTokenizer()
     encoded_prompt = Tensor([tokenizer.encode(prompt)])
@@ -288,7 +288,7 @@ class StableDiffusionText2ImagePipeline(Pipeline[StableDiffusion]):
     print('got CLIP context', context.shape)
 
     profile_marker('run clip (unconditional)')
-    encoded_prompt = Tensor([tokenizer.encode('')])
+    encoded_prompt = Tensor([tokenizer.encode(nevative_prompt)])
     unconditional_context = self.model.cond_stage_model.transformer.text_model(encoded_prompt).realize() # type: ignore
     print('got unconditional CLIP context', unconditional_context.shape)
 
@@ -322,8 +322,8 @@ class StableDiffusionText2ImagePipeline(Pipeline[StableDiffusion]):
             self.device.synchronize()
         step_times.append((time.perf_counter_ns() - st)*1e-6)
       # done with diffusion model
-      del run
-      del self.model.model
+      # del run
+      # del self.model.model
 
     if (assert_time:=getenv('ASSERT_MIN_STEP_TIME')):
       min_time = min(step_times)

@@ -11,6 +11,15 @@ class Pipeline[T: Model](ABC):
     self.device = Device[Device.DEFAULT]
     self.model = model
 
+  # @abstractmethod
+  # def generate(self) -> Tensor:
+  #   pass
+
+class Text2ImagePipeline[T: Model](Pipeline):
   @abstractmethod
-  def generate(self, prompt: str) -> Tensor:
+  def generate(self, prompt: str, nevative_prompt: str, steps: int, seed: int|None, guidance: float) -> Tensor:
     pass
+
+# TODO
+class Image2ImagePipeline[T: Model](Pipeline):
+  pass

@@ -10,6 +10,7 @@ let modelType = 'stablediffusion';
 let modelId = '';
 let pipelineId = '';
 let prompt = '';
+let negative_prompt = '';
 let generatedImageUrl = '';
 
 let statusMessage = '';
@@ -71,10 +72,10 @@ async function generateImage() {
   }
 
   try {
-    const res = await fetch(`${BASE_URL}/generate`, {
+    const res = await fetch(`${BASE_URL}/generate/text2image`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pipeline_id: pipelineId, prompt: prompt })
+      body: JSON.stringify({ pipeline_id: pipelineId, prompt, negative_prompt })
     });
 
     if (!res.ok) throw new Error('Failed to generate image');
@@ -125,6 +126,13 @@ async function generateImage() {
         id="prompt-input"
         bind:value={prompt}
         placeholder="a fantasy landscape, highly detailed..."
+        disabled={!pipelineId || isLoading}
+      ></textarea>
+      <label for="negativeprompt-input">Prompt:</label>
+      <textarea
+        id="negativeprompt-input"
+        bind:value={negative_prompt}
+        placeholder="bad fingers..."
         disabled={!pipelineId || isLoading}
       ></textarea>
     </div>
