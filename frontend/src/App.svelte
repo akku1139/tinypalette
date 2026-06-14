@@ -15,7 +15,20 @@ let prompt = '';
 let negative_prompt = '';
 let generatedImageUrl = '';
 
+let generatedImages: string[] = [];
+
 let isLoading = false;
+
+const fetchGeneratedImages = async () => {
+  try {
+    addToast({ type: 'info', message: 'Fetching generated images...' });
+    const res = await fetch(`${BASE_URL}/list_outputs/images`);
+    if (!res.ok) throw new Error('Failed to get generated images');
+    generatedImages = await res.json();
+  } catch (err: any) {
+    addToast({ type: 'error', message: `Error: ${err.message}` });
+  }
+};
 
 onMount(async () => {
   try {
@@ -27,6 +40,7 @@ onMount(async () => {
   } catch (err: any) {
     addToast({ type: 'error', message: `Error: ${err.message}` });
   }
+  await fetchGeneratedImages();
 });
 
 async function setupPipeline() {
@@ -87,6 +101,7 @@ async function generateImage() {
     addToast({ type: 'error', message: `Error: ${err.message}` });
   } finally {
     isLoading = false;
+    await fetchGeneratedImages();
   }
 }
 </script>
@@ -103,7 +118,7 @@ async function generateImage() {
         </select>
       </div>
 
-      <button on:click={setupPipeline} disabled={isLoading || !selectedModelPath || !!pipelineId}>
+      <button onclick={setupPipeline} disabled={isLoading || !selectedModelPath || !!pipelineId}>
         {pipelineId ? 'setup done' : 'load a model'}
       </button>
     </section>
@@ -126,21 +141,39 @@ async function generateImage() {
         ></textarea>
       </div>
 
-      <button on:click={generateImage} disabled={!pipelineId || !prompt || isLoading}>
+      <button onclick={generateImage} disabled={!pipelineId || !prompt || isLoading}>
         {isLoading ? 'Generating...' : 'Generate'}
       </button>
     </section>
   </div>
   <div class='center'>
-    <section class="result-container">
-      {#if generatedImageUrl}
-        <div class="image-wrapper">
-          <img src={generatedImageUrl} alt="Generated" />
+    <input type='radio' name="tab-group" id='tab-generation' checked />
+    <input type='radio' name="tab-group" id='tab-gallery' />
+    <div class='tabbar'>
+      <label for='tab-generation'>Generation</label>
+      <label for='tab-gallery'>Gallery</label>
+    </div>
+    <div class='tab-contents'>
+      <div class='tab-content' id='tab-generation-content'>
+        <section class='result-container'>
+          {#if generatedImageUrl}
+            <div class="image-wrapper">
+              <img src={generatedImageUrl} alt="Generated" />
+            </div>
+          {:else if isLoading && pipelineId}
+            <div class="spinner-placeholder">Generating an image...</div>
+          {/if}
+        </section>
+      </div>
+      <div class='tab-content' id='tab-gallery-content'>
+        <button onclick={fetchGeneratedImages}>⟳ reload</button>
+        <div class='generated-images'>
+          {#each generatedImages as i}
+            <div class='generated-image'><img src='/data/outputs/images/{i}' loading='lazy' height="150px" width="150px" /></div>
+          {/each}
         </div>
-      {:else if isLoading && pipelineId}
-        <div class="spinner-placeholder">Generating an image...</div>
-      {/if}
-    </section>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -154,6 +187,8 @@ async function generateImage() {
   --color-text: #ccc;
   --color-accent: #007acc;
   --color-white: #eaeaea;
+
+  --padding-basic: 8px 17px;
 }
 
 :global(body) {
@@ -165,30 +200,105 @@ async function generateImage() {
   height: 100vh;
   width: 100vw;
   box-sizing: border-box;
+  /*overflow: hidden;*/
 }
 
 .container {
   display: grid;
   grid-template-areas: "left center";
+  grid-template-columns: minmax(0, 500px) 1fr;
   min-width: 100%;
+  height: 100vh;
   margin: 0 auto;
 }
 
 .left {
   grid-area: left;
-  /*padding: 20px;*/
   max-width: 500px;
   background-color: var(--color-extra);
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.tabbar {
+  user-select: none;
+  display: flex;
+  border-bottom: 1px solid var(--color-sub);
+  padding-left: 4px;
+  position: sticky;
+  flex-shrink: 0;
+}
+
+.tabbar > label {
+  padding: var(--padding-basic);
+  cursor: pointer;
+  background: var(--color-extra);
+  border: 1px solid var(--color-sub);
+  border-bottom: none;
+  margin-right: 5px;
+  border-radius: 4px 4px 0 0;
+}
+
+input[name='tab-group'] {
+  display: none;
+}
+
+.tab-contents {
+  flex-grow: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-left: 20px;
+}
+
+.tab-content {
+  display: none;
+  overflow-y: auto;
+  /*flex-grow: 1;*/
+  height: 100%;
+  box-sizing: border-box;
+}
+
+#tab-generation:checked ~ .tabbar > label[for="tab-generation"],
+#tab-gallery:checked ~ .tabbar > label[for="tab-gallery"] {
+  background-color: var(--color-main);
+  border-bottom: 1px solid var(--color-sub);
+  margin-bottom: -1px;
+  font-weight: bold;
+}
+
+#tab-generation:checked ~ div.tab-contents > #tab-generation-content,
+#tab-gallery:checked ~ div.tab-contents > #tab-gallery-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .center {
   grid-area: center;
   width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.generated-images {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.generated-image {
+  height: 150px;
+  width: 150px;
+}
+
+.generated-image > img {
+  object-fit: cover;
 }
 
 .card {
-  background: 252526;
+  background: var(--color-extra);
   padding: 20px;
   margin-bottom: 20px;
 }
@@ -221,7 +331,7 @@ button {
   background-color: var(--color-accent);
   color: var(--color-sub);
   border: none;
-  padding: 8px 17px;
+  padding: var(--padding-basic);
   border-radius: 4px;
   cursor: pointer;
   font-size: 16px;

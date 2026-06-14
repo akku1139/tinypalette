@@ -50,9 +50,9 @@ def generate(data: GenerateData):
   img_io.seek(0)
   return Response(content=img_io.getvalue(), media_type="image/png")
 
-@api.get('/list_outputs/stablediffusion')
-def list_outputs_stablediffusion():
-  return list(config.path.outputs.images.rglob("*.png"))
+@api.get('/list_outputs/images')
+def list_outputs_images():
+  return list(p.relative_to(config.path.outputs.images) for p in config.path.outputs.images.rglob("*.png"))
 
 @api.get('/')
 async def root():
