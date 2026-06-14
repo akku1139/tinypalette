@@ -4,6 +4,7 @@ from fastapi import FastAPI, Response
 from PIL import Image
 import io
 from pydantic import BaseModel
+import uuid
 
 from config import config
 from pool import create_pipeline, get_pipeline, load_model
@@ -45,6 +46,7 @@ def generate(data: GenerateData):
   im = Image.fromarray(res.numpy())
   img_io = io.BytesIO()
   im.save(img_io, format="PNG")
+  im.save(config.path.outputs.image/f'{uuid.uuid7()}.png')
   img_io.seek(0)
   return Response(content=img_io.getvalue(), media_type="image/png")
 

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from pydantic import BaseModel
 
@@ -17,3 +18,6 @@ class Config(BaseModel):
   path: PathConfig
 
 config = Config.model_validate_json(CONFIG_FILE_PATH.read_text(encoding="utf-8"))
+
+os.makedirs(config.path.models.stablediffusion, exist_ok=True)
+os.makedirs(config.path.outputs.image, exist_ok=True)
