@@ -215,9 +215,17 @@ class StableDiffusion(Model):
       load_state_dict(self, state_dict, verbose=False, strict=False, realize=False)
 
       # TODO: cast on CPU
-      for _k,v in get_state_dict(self).items():
+      for k,v in get_state_dict(self).items():
+        print('editing layer:', k)
         if v.dtype == dtypes.float64 or v.dtype == dtypes.double: # Some models have fp64 params
+          print('convert from fp64 to fp32')
           v.replace(v.cast(dtypes.float32))
+        if (k.startswith('model.diffusion_model.input_blocks')
+          or k.startswith('model.diffusion_model.middle_block')
+          or k.startswith('model.diffusion_model.output_blocks')
+        ): # optimize
+          print('convert from fp32 to fp16')
+          v.replace(v.cast(dtypes.float16))
 
       Tensor.realize(*get_state_dict(self).values())
 
